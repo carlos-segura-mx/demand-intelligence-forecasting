@@ -12,7 +12,7 @@ NEEDED=[
     "portfolio_profile.csv","policy_overall_metrics.csv","policy_segment_metrics.csv",
     "policy_horizon_metrics.csv","prospective_review_queue.csv"
 ]
-st.set_page_config(page_title="Demand Intelligence | CS Intelligence",page_icon="📈",layout="wide")
+st.set_page_config(page_title="Demand Intelligence | Carlos Segura",page_icon="📈",layout="wide")
 lang=st.sidebar.radio("Idioma / Language",["Español","English"],horizontal=True)
 
 def T(es,en):
@@ -20,8 +20,8 @@ def T(es,en):
 
 st.title(T("Inteligencia de demanda y pronósticos","Demand Intelligence & Forecasting"))
 st.caption(T(
-    "CS Intelligence | 811 productos, 52 semanas indexadas | Datos públicos de UCI",
-    "CS Intelligence | 811 products, 52 indexed weeks | Public UCI data"
+    "Carlos Segura | 811 productos, 52 semanas indexadas | Datos públicos de UCI",
+    "Carlos Segura | 811 products, 52 indexed weeks | Public UCI data"
 ))
 st.markdown(T(
     "¿Cuánta complejidad hace falta para pronosticar cantidades y decidir qué productos revisar?",

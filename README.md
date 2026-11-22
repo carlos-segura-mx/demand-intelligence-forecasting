@@ -49,4 +49,4 @@ The UCI series provide observed purchased quantities, not confirmed unconstraine
 
 **Source:** Tan, J. (2014), *Sales Transactions Weekly*, UCI Machine Learning Repository, [DOI: 10.24432/C5XS4Q](https://doi.org/10.24432/C5XS4Q), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
 
-**Carlos Segura | CS Intelligence**
+**Carlos Segura**
