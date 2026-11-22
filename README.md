@@ -22,7 +22,7 @@ The aggregate result is not the whole story. In the final evaluation, the A/X se
 
 I built an interactive, bilingual Streamlit application to examine model performance, product histories, ABC/XYZ segments and a prioritized review list. The list uses **only observations through W43**, with forecasts for W44 and W44 to W47. It ranks products by historical volume, variability and recent quantity changes. These are historical demonstration periods, not current calendar-week forecasts.
 
-The review list can be filtered and exported as CSV. Its priority levels indicate where an analyst might investigate; they are not calibrated probabilities of stockouts or purchase orders.
+The review list has two complementary views: review-score alerts for unusual patterns and a separate ranking by historical unit volume. It offers concise product tables, individual review guidance and CSV export. The review priority is an analyst-defined heuristic, not an economic ranking, calibrated stockout probability or purchase order.
 
 ## Live dashboard
 

@@ -106,8 +106,16 @@ with tabs[0]:
     b.metric("WAPE SES",f"{ses:.2%}")
     c.metric("WAPE ABC/XYZ",f"{seg:.2%}")
     d.metric(T("Mejora vs. base","Gain vs. baseline"),f"{reduction:.1%}")
+    st.caption(T(
+        "La mejora es una reducción relativa del error absoluto total, no una diferencia en puntos porcentuales de WAPE.",
+        "The gain is the relative reduction in total absolute error, not a percentage-point difference in WAPE."
+    ))
     compare=policy[["strategy","wape"]].copy()
     compare["method"]=compare.strategy.map(labels)
+    compare["method"]=pd.Categorical(
+        compare["method"],categories=[labels["naive"],labels["ses"],labels["segmented_policy"]],
+        ordered=True)
+    compare=compare.sort_values("method")
     fig=px.bar(compare,x="method",y="wape",text=compare.wape.map(lambda x:f"{x:.2%}"),
                labels={"method":T("Método de pronóstico","Forecast method"),"wape":T("WAPE (menor es mejor)","WAPE (lower is better)")},
                title=T("Error de pronóstico en la evaluación final","Forecast error in the final evaluation"))
@@ -167,9 +175,14 @@ with tabs[2]:
         "ses":"SES",
         "observed":T("Observado","Observed")
     })
+    st.caption(T(
+        "Evaluación histórica: semanas indexadas W44 a W51. No son fechas de calendario ni un pronóstico vigente.",
+        "Historical evaluation: indexed weeks W44 to W51. These are not calendar dates or current forecasts."
+    ))
     st.line_chart(series)
     detail_view=detail[["origin","horizon","model","actual","forecast","abs_error"]].copy()
     detail_view["model"]=detail_view["model"].map(labels).fillna(detail_view["model"])
+    detail_view[["forecast","abs_error"]]=detail_view[["forecast","abs_error"]].round(2)
     st.dataframe(detail_view.rename(columns={
             "origin":T("Origen","Origin"),"horizon":T("Horizonte","Horizon"),
             "model":T("Modelo","Model"),"actual":T("Observado","Observed"),
@@ -212,7 +225,18 @@ with tabs[3]:
         colorscale="Blues",colorbar={"title":"WAPE (%)"}))
     heat.update_layout(height=330,margin={"l":30,"r":15,"t":20,"b":35},
                        xaxis_title="XYZ",yaxis_title="ABC",yaxis_autorange="reversed")
+    for abc_name in segment_matrix.index:
+        for xyz_name in segment_matrix.columns:
+            if pd.isna(segment_matrix.loc[abc_name,xyz_name]):
+                heat.add_annotation(x=xyz_name,y=abc_name,
+                                    text=T("N/D","N/A"),showarrow=False,
+                                    font={"color":"#bdbdbd","size":12})
+    heat.update_traces(hoverongaps=False)
     st.plotly_chart(heat,use_container_width=True)
+    st.caption(T(
+        "N/D indica segmentos sin pronósticos evaluados, no un error de 0 %. Los porcentajes requieren interpretación junto con el volumen observado.",
+        "N/A means there were no evaluated forecasts in that segment, not a 0% error. Read percentages alongside observed volume."
+    ))
     segment_view["segment"]=segment_view.abc+segment_view.xyz
     segment_view["wape_display"]=(100*segment_view.wape).round(2)
     segment_view["bias_display"]=(100*segment_view.bias_pct).round(2)
@@ -249,52 +273,123 @@ with tabs[3]:
     ))
 
 with tabs[4]:
-    st.subheader(T("Qué productos merecen una revisión","Which products deserve a closer look"))
+    st.subheader(T("Qué productos conviene revisar","Which products should be reviewed"))
     a,b,c=st.columns(3)
     for col,k in zip([a,b,c],["High","Medium","Routine"]):
         col.metric(tiers[k],int((queue.review_tier==k).sum()))
     st.caption(T(
-        "Corte histórico: W43. Los pronósticos W44 y W44 a W47 se calculan desde ese corte, no para la semana actual. La cola no utiliza los resultados de la evaluación posterior.",
-        "Historical cutoff: W43. Forecasts for W44 and W44 to W47 start from that cutoff, not the current calendar week. The queue excludes later evaluation outcomes."
+        "Corte histórico: W43. Los pronósticos corresponden a W44 y W44 a W47, no al calendario actual.",
+        "Historical cutoff: W43. Forecasts refer to W44 and W44 to W47, not the current calendar."
     ))
-    selected=st.multiselect(T("Nivel de revisión","Review tier"),list(tiers),
-                           default=list(tiers),format_func=lambda x:tiers[x])
+    st.info(T(
+        "La prioridad de revisión combina volumen histórico (ABC), variabilidad (XYZ), semanas sin compras y cambios recientes. No mide impacto económico ni identifica automáticamente los productos más rentables. Por eso se presentan dos enfoques de revisión.",
+        "Review priority combines historical volume (ABC), variability (XYZ), zero-purchase weeks and recent changes. It does not measure financial impact or identify the most profitable products. Two complementary review perspectives are provided."
+    ))
+    focus=st.radio(
+        T("Enfoque de revisión","Review focus"),
+        ["patterns","volume"],horizontal=True,
+        format_func=lambda x:(
+            T("Alertas por patrones","Pattern alerts") if x=="patterns"
+            else T("Mayor volumen histórico","Highest historical volume")
+        ),key="review_focus")
+    selected=st.multiselect(
+        T("Prioridad de revisión","Review priority"),list(tiers),
+        default=list(tiers),format_func=lambda x:tiers[x])
     q=queue[queue.review_tier.isin(selected)].copy()
+    if focus=="volume":
+        q=q.sort_values(
+            ["historical_units","review_score","product"],
+            ascending=[False,False,True],kind="stable")
+        st.caption(T(
+            "Ordenado por unidades históricas. Más unidades no implica mayor margen ni riesgo monetario.",
+            "Sorted by historical units. More units do not imply higher margins or monetary risk."
+        ))
+    else:
+        q=q.sort_values(
+            ["review_score","historical_units","product"],
+            ascending=[False,False,True],kind="stable")
+        st.caption(T(
+            "Ordenado por puntuación de revisión. Los patrones irregulares pueden destacar incluso cuando el volumen es bajo.",
+            "Sorted by review score. Irregular patterns can rank highly even with low unit volume."
+        ))
     q["review_tier"]=q.review_tier.map(tiers)
     if lang=="Español":
         q["review_reason"]=q.review_reason.map(reason_label)
         q["recommended_review"]=q.recommended_review.map(lambda x:actions_es.get(x,x))
-    cols=["product","abc","xyz","review_tier","review_score","historical_units",
-          "forecast_next_week","forecast_four_week_total","recent_shift_units",
-          "review_reason","recommended_review"]
-    displayed=q[cols].rename(columns={
-        "product":T("Producto","Product"),"review_tier":T("Nivel","Tier"),
-        "review_score":T("Puntuación","Score"),"historical_units":T("Unidades históricas","Historical units"),
+    export_cols=["product","abc","xyz","review_tier","review_score","historical_units",
+                 "forecast_next_week","forecast_four_week_total","recent_shift_units",
+                 "review_reason","recommended_review"]
+    export_names={
+        "product":T("Producto","Product"),
+        "review_tier":T("Prioridad de revisión","Review priority"),
+        "review_score":T("Puntuación","Score"),
+        "historical_units":T("Unidades históricas","Historical units"),
         "forecast_next_week":T("Pronóstico W44","W44 forecast"),
         "forecast_four_week_total":T("Pronóstico W44 a W47","W44 to W47 forecast"),
         "recent_shift_units":T("Cambio reciente (unidades)","Recent shift (units)"),
-        "review_reason":T("Motivos","Reasons"),"recommended_review":T("Revisión sugerida","Suggested review")
+        "review_reason":T("Motivos","Reasons"),
+        "recommended_review":T("Revisión sugerida","Suggested review")
+    }
+    export_view=q[export_cols].rename(columns=export_names)
+    display_view=q[["product","abc","xyz","review_tier","review_score",
+                    "historical_units","forecast_next_week","recent_shift_units"]].copy()
+    display_view["abc_xyz"]=display_view.abc+display_view.xyz
+    display_view["forecast_next_week"]=display_view.forecast_next_week.round(2)
+    display_view=display_view[["product","abc_xyz","review_tier","review_score",
+                               "historical_units","forecast_next_week","recent_shift_units"]]
+    display_view=display_view.rename(columns={
+        "product":T("Producto","Product"),
+        "abc_xyz":T("Segmento","Segment"),
+        "review_tier":T("Prioridad","Priority"),
+        "review_score":T("Puntos","Score"),
+        "historical_units":T("Unidades","Historical units"),
+        "forecast_next_week":T("Pronóstico W44","W44 forecast"),
+        "recent_shift_units":T("Cambio reciente","Recent change")
     })
-    visible=st.selectbox(T("Mostrar productos","Show products"),[10,20,50,"all"],
-                         index=1,format_func=lambda x:T("Todos","All") if x=="all" else str(x),
-                         key="review_row_count")
-    st.dataframe(displayed if visible=="all" else displayed.head(visible),
+    visible=st.selectbox(
+        T("Mostrar productos","Show products"),[10,20,50,"all"],
+        index=1,format_func=lambda x:T("Todos","All") if x=="all" else str(x),
+        key="review_row_count")
+    st.dataframe(display_view if visible=="all" else display_view.head(visible),
                  hide_index=True,use_container_width=True)
     st.download_button(
         T("Descargar lista filtrada (CSV)","Download filtered review list (CSV)"),
-        data=displayed.to_csv(index=False).encode("utf-8-sig"),
+        data=export_view.to_csv(index=False).encode("utf-8-sig"),
         file_name="demand_review_queue.csv",mime="text/csv")
-    top=q.head(15).iloc[::-1].copy()
-    if not top.empty:
-        chart=px.bar(top,x="review_score",y="product",orientation="h",color="review_tier",
-                     labels={"review_score":T("Puntuación de revisión","Review score"),
-                             "product":T("Producto","Product"),
-                             "review_tier":T("Nivel","Tier")},
-                     title=T("Primeros 15 productos para revisar","First 15 products to review"))
+    if not q.empty:
+        st.subheader(T("Detalle para revisar","Product review details"))
+        chosen_product=st.selectbox(
+            T("Producto seleccionado","Selected product"),
+            q["product"].tolist(),key="review_product_detail")
+        selected_row=q.loc[q["product"].eq(chosen_product)].iloc[0]
+        st.write(T("**Motivos:** ","**Reasons:** ")+str(selected_row.review_reason))
+        st.write(T("**Revisión sugerida:** ","**Suggested review:** ")
+                 +str(selected_row.recommended_review))
+        st.caption(T(
+            "La lista resumida muestra pronósticos con dos decimales; el archivo CSV conserva la precisión calculada.",
+            "The summary table rounds forecasts to two decimals; the CSV retains calculated precision."
+        ))
+        top=q.head(15).iloc[::-1].copy()
+        chart=px.bar(top,x="historical_units",y="product",orientation="h",
+                     color="review_tier",
+                     labels={
+                         "historical_units":T("Unidades históricas","Historical units"),
+                         "product":T("Producto","Product"),
+                         "review_tier":T("Prioridad","Priority")
+                     },
+                     title=T(
+                         "Volumen de los primeros 15 productos según el enfoque elegido",
+                         "Historical volume of the first 15 products under the selected view"
+                     ))
         st.plotly_chart(chart,use_container_width=True)
-    st.info(T(
-        "La puntuación es una regla transparente para organizar trabajo humano. No es una probabilidad de desabasto, un riesgo monetario ni una orden de reabastecimiento.",
-        "The score is a transparent human-review heuristic. It is not a stockout probability, monetary exposure or replenishment order."
+    else:
+        st.warning(T(
+            "No hay productos para los filtros seleccionados.",
+            "No products match the selected filters."
+        ))
+    st.caption(T(
+        "Las prioridades son reglas de revisión definidas por el analista, no probabilidades calibradas de desabasto, pérdidas económicas ni órdenes de compra.",
+        "Priorities are analyst-defined review rules, not calibrated stockout probabilities, financial losses or purchase orders."
     ))
 
 with tabs[5]:

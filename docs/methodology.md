@@ -30,7 +30,7 @@ The review queue uses W0 to W43 only. Its next-week forecast means W44 and its f
 
 The queue must align each historical series with the product identifier after segmentation is sorted. This alignment is explicitly tested. After the correction, the queue contains 7 High, 293 Medium and 511 Routine products.
 
-The score is an analyst-defined rule, not a calibrated probability, monetary exposure or replenishment quantity. Retrospective holdout exceptions are separate and are not used to rank this queue.
+The score is an analyst-defined rule, not a calibrated probability, monetary exposure or replenishment quantity. High-ranked products can have low historical unit volume if their observed purchasing pattern is irregular. The dashboard offers both a score-based alert view and a separate descending historical-volume view. Neither is a ranking of financial impact. The summary table rounds displayed forecasts to two decimals, while exports retain calculation precision. Retrospective holdout exceptions are separate and are not used to rank this queue.
 
 ## Limitations
 

@@ -22,7 +22,7 @@ El indicador agregado no cuenta toda la historia. En la evaluación final, el se
 
 Construí una aplicación interactiva en Streamlit, disponible en español e inglés, para comparar modelos, explorar productos, analizar segmentos ABC/XYZ y consultar una lista priorizada de revisión. Esa lista utiliza **solo observaciones hasta W43** y produce pronósticos para W44 y para el periodo W44 a W47. Son periodos históricos de demostración, no pronósticos para la semana actual.
 
-La lista puede filtrarse y exportarse como CSV. Sus prioridades sirven para organizar investigaciones comerciales; no representan probabilidades calibradas de desabasto ni órdenes de compra.
+La lista ofrece dos formas complementarias de trabajo: alertas basadas en una puntuación de revisión y un ordenamiento independiente por volumen histórico. Incluye una tabla resumida, el diagnóstico de cada producto y exportación CSV. La prioridad es una regla de revisión definida por el analista, no una clasificación económica, una probabilidad de desabasto ni una orden de compra.
 
 ## Dashboard interactivo
 

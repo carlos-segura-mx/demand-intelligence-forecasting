@@ -30,7 +30,7 @@ La cola de revisión solo utiliza W0 a W43. Su pronóstico de una semana corresp
 
 Tras ordenar la segmentación es indispensable relacionar cada serie con su identificador de producto. La alineación se prueba explícitamente. Después de corregirla, hay 7 productos de prioridad alta, 293 media y 511 rutinaria.
 
-La puntuación es una regla de revisión definida por el analista. No representa probabilidades calibradas, pérdidas monetarias ni cantidades a reabastecer. Los errores retrospectivos del periodo de evaluación se mantienen separados.
+La puntuación es una regla de revisión definida por el analista. Algunos productos pueden tener prioridad alta por sus patrones irregulares aunque su volumen sea pequeño. El dashboard permite revisar las alertas por puntuación o consultar por separado los productos con mayor volumen histórico. Ninguno de los dos enfoques equivale a un ordenamiento por rentabilidad o impacto económico. La tabla resume los pronósticos con dos decimales y el CSV conserva la precisión calculada. Los errores retrospectivos del periodo de evaluación se mantienen separados.
 
 ## Limitaciones
 

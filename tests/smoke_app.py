@@ -18,6 +18,10 @@ def run():
         raise AssertionError("ABC/XYZ segment matrix selector missing")
     if not any(x.label=="Mostrar productos" for x in app.selectbox):
         raise AssertionError("Review list size selector missing")
+    if not any(x.label=="Enfoque de revisión" for x in app.radio):
+        raise AssertionError("Complementary review focus selector missing")
+    if not any(x.label=="Producto seleccionado" for x in app.selectbox):
+        raise AssertionError("Selected product detail missing")
     print("PASS: Spanish dashboard, segment matrix and concise KPI labels")
     languages=[x for x in app.sidebar.radio if x.label=="Idioma / Language"]
     if len(languages)!=1: raise AssertionError("Language selector missing")
@@ -30,7 +34,9 @@ def run():
     en_labels={x.label for x in app.metric}
     if not en_expected.issubset(en_labels):
         raise AssertionError(f"English KPI labels missing: {en_expected-en_labels}")
-    print("PASS: English dashboard, terminology and metrics")
+    if not any(x.label=="Review focus" for x in app.radio):
+        raise AssertionError("English review focus label missing")
+    print("PASS: English dashboard, terminology and review focus")
 
 if __name__=="__main__":
     run()
