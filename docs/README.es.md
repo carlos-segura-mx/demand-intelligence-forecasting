@@ -24,6 +24,10 @@ Construí una aplicación interactiva en Streamlit, disponible en español e ing
 
 La lista puede filtrarse y exportarse como CSV. Sus prioridades sirven para organizar investigaciones comerciales; no representan probabilidades calibradas de desabasto ni órdenes de compra.
 
+## Dashboard interactivo
+
+[Explorar el dashboard en línea](https://demand-intelligence-forecasting-biexn2j5lhinfwgmdybb2x.streamlit.app/). La aplicación permite comparar modelos, analizar errores por segmento ABC/XYZ y descargar una lista priorizada de revisión en español e inglés.
+
 ## Explorar y reproducir
 
 El repositorio contiene `app.py`, modelos, pruebas, datos autorizados y resultados reproducibles. Para ejecutar el proyecto localmente:
