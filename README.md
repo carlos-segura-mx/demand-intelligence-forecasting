@@ -24,6 +24,10 @@ I built an interactive, bilingual Streamlit application to examine model perform
 
 The review list can be filtered and exported as CSV. Its priority levels indicate where an analyst might investigate; they are not calibrated probabilities of stockouts or purchase orders.
 
+## Live dashboard
+
+[Open the interactive dashboard](https://demand-intelligence-forecasting-biexn2j5lhinfwgmdybb2x.streamlit.app/). The application includes model comparison, ABC/XYZ error analysis and an exportable product-review list in English and Spanish.
+
 ## Explore and reproduce
 
 The repository includes the Streamlit application in `app.py`, model code, tests, permitted source data and reproducible outputs. To run it locally:
