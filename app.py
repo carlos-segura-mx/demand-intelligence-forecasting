@@ -56,9 +56,9 @@ seg=float(vals.loc["segmented_policy","wape"])
 reduction=1-float(vals.loc["ses","absolute_error"])/float(vals.loc["naive","absolute_error"])
 
 labels={
-    "naive":T("Pronóstico ingenuo","Naive baseline"),
-    "ses":T("SES global","Global SES"),
-    "segmented_policy":T("Política ABC/XYZ","ABC/XYZ policy")
+    "naive":T("Referencia: último valor observado","Naive benchmark: last observed value"),
+    "ses":T("Suavizamiento exponencial simple (SES)","Simple exponential smoothing (SES)"),
+    "segmented_policy":T("Selección por segmentos ABC/XYZ","ABC/XYZ segment-based selection")
 }
 tiers={
     "High":T("Alta","High"),
@@ -96,25 +96,29 @@ tabs=st.tabs([
 with tabs[0]:
     st.subheader(T("¿Qué modelo conviene utilizar?","Which model should we use?"))
     a,b,c,d=st.columns(4)
-    a.metric(T("WAPE ingenuo","Naive WAPE"),f"{naive:.2%}")
-    b.metric(T("WAPE SES","SES WAPE"),f"{ses:.2%}")
-    c.metric(T("WAPE ABC/XYZ","ABC/XYZ WAPE"),f"{seg:.2%}")
-    d.metric(T("Reducción del error absoluto","Absolute-error reduction"),f"{reduction:.1%}")
+    st.caption(T(
+        "Comparamos el error porcentual absoluto ponderado (WAPE). Se calcula sobre las unidades observadas y, cuanto menor sea, mejor es el resultado.",
+        "We compare weighted absolute percentage error (WAPE), calculated from observed units. Lower values mean less aggregate error."
+    ))
+    a.metric(T("Referencia (WAPE)","Baseline (WAPE)"),f"{naive:.2%}")
+    b.metric(T("Suavizamiento simple (WAPE)","Exponential smoothing (WAPE)"),f"{ses:.2%}")
+    c.metric(T("Por segmentos (WAPE)","Segment-based (WAPE)"),f"{seg:.2%}")
+    d.metric(T("Menor error frente a referencia","Error reduction vs. baseline"),f"{reduction:.1%}")
     compare=policy[["strategy","wape"]].copy()
     compare["method"]=compare.strategy.map(labels)
     fig=px.bar(compare,x="method",y="wape",text=compare.wape.map(lambda x:f"{x:.2%}"),
-               labels={"method":T("Estrategia","Strategy"),"wape":"WAPE"},
-               title=T("Error relativo en el periodo de evaluación","Relative error on the final holdout"))
+               labels={"method":T("Método de pronóstico","Forecast method"),"wape":T("WAPE (menor es mejor)","WAPE (lower is better)")},
+               title=T("Error de pronóstico en la evaluación final","Forecast error in the final evaluation"))
     fig.update_yaxes(tickformat=".0%")
     fig.update_layout(showlegend=False)
     st.plotly_chart(fig,use_container_width=True)
     st.write(T(
-        "SES global logró el menor error agregado. La segmentación ofrece una forma de organizar la revisión comercial, pero no mejoró la precisión frente a SES en este ejercicio.",
-        "Global SES had the lowest pooled error. Segmentation helps organize planning reviews, but it did not improve accuracy over SES in this evaluation."
+        "El suavizamiento exponencial simple, aplicado a cada producto con el mismo parámetro, tuvo el menor error agregado. Seleccionar modelos según ABC/XYZ no mejoró ese resultado, aunque la segmentación sigue siendo útil para organizar revisiones.",
+        "Simple exponential smoothing, applied to each product using the same parameter, had the lowest aggregate error. Choosing models by ABC/XYZ segment did not improve that result, although segmentation still helps organize reviews."
     ))
     st.caption(T(
-        "Se evaluaron las semanas W44 a W51, con selección de modelos realizada en semanas anteriores. WAPE mide error de cantidades, no pérdidas económicas.",
-        "Models were evaluated on W44 to W51 and selected using earlier weeks. WAPE measures quantity error, not financial loss."
+        "La evaluación final usa las semanas W44 a W51. Los métodos se seleccionaron con semanas anteriores. WAPE mide errores de cantidad, no pérdidas económicas ni problemas de inventario.",
+        "The final evaluation covers weeks W44 to W51. Methods were selected using earlier weeks. WAPE measures quantity errors, not monetary losses or inventory shortfalls."
     ))
 
 with tabs[1]:
@@ -122,7 +126,7 @@ with tabs[1]:
     h=horizons.copy()
     h["method"]=h.strategy.map(labels)
     graph=px.line(h,x="horizon",y="wape",color="method",markers=True,
-        labels={"horizon":T("Semanas hacia adelante","Weeks ahead"),"wape":"WAPE","method":T("Estrategia","Strategy")})
+        labels={"horizon":T("Semanas hacia adelante","Weeks ahead"),"wape":T("Error porcentual ponderado (WAPE)","Weighted percentage error (WAPE)"),"method":T("Método","Method")})
     graph.update_yaxes(tickformat=".0%")
     graph.update_xaxes(dtick=1)
     st.plotly_chart(graph,use_container_width=True)
@@ -149,13 +153,14 @@ with tabs[2]:
     lines["observed"]=detail.groupby("week_number").actual.first()
     lines=lines.sort_index()
     series=lines.rename(columns={
-        "naive":T("Ingenuo","Naive"),
-        "ses":"SES",
+        "naive":T("Referencia: último valor","Baseline: last value"),
+        "ses":T("Suavizamiento simple (SES)","Simple smoothing (SES)"),
         "observed":T("Observado","Observed")
     })
     st.line_chart(series)
-    st.dataframe(detail[["origin","horizon","model","actual","forecast","abs_error"]]
-        .rename(columns={
+    detail_view=detail[["origin","horizon","model","actual","forecast","abs_error"]].copy()
+    detail_view["model"]=detail_view["model"].map(labels).fillna(detail_view["model"])
+    st.dataframe(detail_view.rename(columns={
             "origin":T("Origen","Origin"),"horizon":T("Horizonte","Horizon"),
             "model":T("Modelo","Model"),"actual":T("Observado","Observed"),
             "forecast":T("Pronóstico","Forecast"),"abs_error":T("Error absoluto","Absolute error")
@@ -230,7 +235,7 @@ with tabs[5]:
             "baseline_abs_error","improvement_units","exception_reason"]
     reasons={
         "High volume and high absolute error":T("Alto volumen y error elevado","High volume and high absolute error"),
-        "Selected model worse than naive":T("SES peor que ingenuo","Selected model worse than naive"),
+        "Selected model worse than naive":T("SES con mayor error que el modelo de referencia","SES error higher than the baseline"),
         "Same-sign bias at both origins":T("Sesgo del mismo signo en ambos orígenes","Same-sign bias at both origins"),
         "High share of zero weeks":T("Muchas semanas sin compras","High share of zero weeks"),
         "Routine monitoring":T("Seguimiento ordinario","Routine monitoring")
@@ -241,8 +246,8 @@ with tabs[5]:
         "product":T("Producto","Product"),
         "historical_units":T("Unidades históricas","Historical units"),
         "zero_share":T("Semanas en cero","Zero-week share"),
-        "selected_abs_error":T("Error absoluto SES","SES absolute error"),
-        "baseline_abs_error":T("Error ingenuo","Naive error"),
+        "selected_abs_error":T("Error absoluto SES (unidades)","SES absolute error (units)"),
+        "baseline_abs_error":T("Error absoluto de referencia (unidades)","Baseline absolute error (units)"),
         "improvement_units":T("Mejora en unidades","Improvement in units"),
         "exception_reason":T("Diagnóstico","Diagnostic")
     }),hide_index=True,use_container_width=True)
