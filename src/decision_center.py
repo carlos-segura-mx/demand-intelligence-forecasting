@@ -10,7 +10,7 @@ def make_queue(data, history_end=44):
     if history_end < 8 or history_end > 52:
         raise ValueError('Invalid history boundary')
     p = profile(data, history_end).copy()
-    a = data[WEEKS[:history_end]].to_numpy(dtype=float)
+    a = data.set_index('Product_Code').loc[p['product'], WEEKS[:history_end]].to_numpy(dtype=float)
     p['forecast_next_week'] = [float(predict(row, 1, 'ses')[0]) for row in a]
     p['forecast_four_week_total'] = p.forecast_next_week * 4
     p['last_four_week_units'] = a[:, -4:].sum(axis=1)
