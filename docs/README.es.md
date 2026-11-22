@@ -1,40 +1,32 @@
 # Inteligencia de demanda y pronósticos
 
-**¿Cuánta complejidad necesita realmente el pronóstico de una cartera de productos?**
+**Cuando una cartera tiene cientos de productos con comportamientos distintos, ¿qué pronósticos conviene utilizar y cuáles revisar primero?**
 
-[Español](README.es.md) | [English](../README.md) | [Método y datos](methodology.es.md)
+[Español](README.es.md) | [English](../README.md) | [Metodología](methodology.es.md) | [Datos y reproducción](DATA.es.md)
 
-Pronosticar cientos de productos no consiste solo en elegir un algoritmo. También hay que decidir cuáles requieren una revisión más cercana y cuándo vale la pena utilizar un modelo más complejo.
+Un equipo de planeación comercial necesita pronósticos que pueda explicar y una forma práctica de decidir dónde concentrar su atención. Un modelo más complejo no necesariamente produce mejores resultados. Evalué esa decisión con 52 semanas indexadas de cantidades compradas para 811 productos del conjunto *Sales Transactions Weekly* de UCI.
 
-Construí este caso con 52 semanas indexadas de cantidades observadas para 811 productos del conjunto *Sales Transactions Weekly* de UCI. Comparé modelos sencillos, evalué sus resultados en semanas posteriores y diseñé una cola de revisión para orientar el trabajo de planeación comercial.
+## Qué encontré
 
-## Lo que encontré
-
-| Evaluación final, semanas W44 a W51 | WAPE | Sesgo |
+| Evaluación final, W44 a W51 | WAPE | Sesgo del pronóstico |
 | --- | ---: | ---: |
-| Pronóstico ingenuo | 33.73 % | -2.50 % |
-| Suavizamiento exponencial simple global (SES) | **27.45 %** | -3.73 % |
-| Política segmentada ABC/XYZ | 27.63 % | -6.03 % |
+| Modelo base: repetir la última semana observada | 33.73 % | -2.50 % |
+| Suavizamiento exponencial simple (SES) | **27.45 %** | -3.73 % |
+| Selección de modelos por segmento ABC/XYZ | 27.63 % | -6.03 % |
 
-El modelo SES global redujo **18.6 %** el error absoluto agregado frente al pronóstico ingenuo. La política segmentada ABC/XYZ, aunque más elaborada, no lo superó en esta evaluación.
+SES redujo **18.6 %** el error absoluto total en unidades respecto al modelo base. Elegir diferentes modelos por segmento ABC/XYZ no mejoró el resultado agregado. En este ejercicio conviene comenzar con un método sencillo por producto, en vez de añadir complejidad sin una mejora comprobada.
 
-Por eso no recomendaría añadir complejidad sin un beneficio comprobado. Mantendría SES como referencia de partida y utilizaría la segmentación para decidir qué productos merecen atención. Una cola prospectiva de revisión identifica cambios recientes y patrones irregulares sin mirar los resultados del periodo de evaluación final.
+El indicador agregado no cuenta toda la historia. En la evaluación final, el segmento A/X concentró 43,424 de las 56,528 unidades observadas y obtuvo un WAPE de 22.22 % con SES. El segmento C/Z concentró solamente 1,287 unidades y registró un WAPE de 93.59 %. Estas diferencias justifican revisar los errores por grupo de productos y no únicamente en toda la cartera. La clasificación ABC se basa en unidades históricas, no en ingresos ni rentabilidad.
 
-## Explorar el análisis
+## Del pronóstico a la revisión
 
-El proyecto incluye un dashboard Streamlit para consultar modelos, pronósticos por producto, segmentación ABC/XYZ, errores retrospectivos y un centro de revisión prospectiva. La interfaz está disponible en **español e inglés**.
+Construí una aplicación interactiva en Streamlit, disponible en español e inglés, para comparar modelos, explorar productos, analizar segmentos ABC/XYZ y consultar una lista priorizada de revisión. Esa lista utiliza **solo observaciones hasta W43** y produce pronósticos para W44 y para el periodo W44 a W47. Son periodos históricos de demostración, no pronósticos para la semana actual.
 
-**Estado de publicación:** el repositorio contiene una versión candidata. Añadiremos la URL de Streamlit cuando el despliegue esté realizado y comprobado.
+La lista puede filtrarse y exportarse como CSV. Sus prioridades sirven para organizar investigaciones comerciales; no representan probabilidades calibradas de desabasto ni órdenes de compra.
 
-## Origen de los datos y límites
+## Explorar y reproducir
 
-Los datos contienen 811 productos anónimos y 52 índices semanales relativos. Son **cantidades compradas observadas**, no una medición confirmada de demanda sin restricciones. No incluyen fechas de calendario, precios, costos, inventario, faltantes, promociones ni tiempos de entrega. La clasificación ABC se calcula por volumen de unidades, no por ingresos.
-
-Los pronósticos y las reglas de revisión no equivalen a órdenes de compra ni estimaciones de pérdidas económicas. La evaluación final tiene solamente dos orígenes de pronóstico, por lo que no permite asegurar estabilidad en todos los productos.
-
-**Fuente:** Tan, J. (2014), *Sales Transactions Weekly*, UCI Machine Learning Repository, DOI: https://doi.org/10.24432/C5XS4Q, licencia [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). El conjunto original se atribuye a su autor y no contiene datos de clientes propios.
-
-## Reproducir el caso
+El repositorio contiene `app.py`, modelos, pruebas, datos autorizados y resultados reproducibles. Para ejecutar el proyecto localmente:
 
 ```bash
 python -m pip install -r requirements.txt
@@ -43,6 +35,14 @@ python reproduce.py
 streamlit run app.py
 ```
 
-El procedimiento de incorporación de datos está explicado en [datos y reproducción](DATA.es.md), y la metodología completa en [metodología](methodology.es.md).
+Consulta la [metodología](methodology.es.md) para conocer el diseño temporal y los métodos, y las [notas sobre los datos](DATA.es.md) para verificar origen, licencia y reproducción.
+
+## Datos e interpretación
+
+WAPE es la suma de errores absolutos dividida entre las unidades observadas; un valor menor indica menor error agregado. El sesgo resume la diferencia con signo entre pronósticos y cantidades observadas. Ninguna de estas métricas representa un impacto financiero.
+
+La fuente contiene cantidades compradas observadas, no una medición confirmada de demanda sin restricciones. No incluye fechas reales, precios, costos, inventarios, desabastos, promociones ni tiempos de entrega. La evaluación final solo utiliza dos orígenes de pronóstico y no demuestra superioridad permanente por producto.
+
+**Fuente:** Tan, J. (2014), *Sales Transactions Weekly*, UCI Machine Learning Repository, [DOI: 10.24432/C5XS4Q](https://doi.org/10.24432/C5XS4Q), licencia [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
 
 **Carlos Segura | CS Intelligence**

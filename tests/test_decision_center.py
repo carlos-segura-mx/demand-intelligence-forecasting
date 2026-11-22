@@ -11,7 +11,8 @@ def fixture():
 
 def test_queue_does_not_use_holdout():
     d=fixture();a=make_queue(d)
-    for w in range(44,52):d[w]=999999
+    for w in range(44,52):d[f"W{w}"]=999999
+    assert d[[f"W{i}" for i in range(44,52)]].eq(999999).all().all()
     b=make_queue(d)
     pd.testing.assert_frame_equal(a,b)
 

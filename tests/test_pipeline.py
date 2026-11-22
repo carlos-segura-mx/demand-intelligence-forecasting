@@ -23,3 +23,21 @@ def test_reject_negative(tmp_path):
     d={'Product_Code':['P1'],**{w:[0] for w in WEEKS}};d['W1']=[-1]
     path=tmp_path/'bad.csv';pd.DataFrame(d).to_csv(path,index=False)
     with pytest.raises(ValueError):load_data(path)
+
+def test_backtest_forecasts_do_not_use_future_target_values():
+    """Changing future targets must not alter forecasts made at an earlier origin."""
+    rows=[]
+    for p in ("P1","P2"):
+        rows.append({"Product_Code":p,**{
+            w:((i*3+2)%13 if p=="P1" else (i%5)*2)
+            for i,w in enumerate(WEEKS)}})
+    original=pd.DataFrame(rows)
+    for origin in (44,48):
+        changed=original.copy()
+        for j in range(origin,52):
+            changed[f"W{j}"]=10000+j
+        for model in ("naive","ma4","ses","croston_sba"):
+            a=backtest(original,[origin],models=(model,))
+            b=backtest(changed,[origin],models=(model,))
+            assert not np.array_equal(a.actual.to_numpy(),b.actual.to_numpy())
+            np.testing.assert_allclose(a.forecast.to_numpy(),b.forecast.to_numpy())

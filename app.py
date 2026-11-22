@@ -2,13 +2,14 @@
 from pathlib import Path
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import streamlit as st
 
 ROOT=Path(__file__).resolve().parent
 OUT=ROOT/"outputs"
 NEEDED=[
     "model_summary.csv","final_predictions.csv","decision_exceptions.csv",
-    "portfolio_profile.csv","policy_overall_metrics.csv",
+    "portfolio_profile.csv","policy_overall_metrics.csv","policy_segment_metrics.csv",
     "policy_horizon_metrics.csv","prospective_review_queue.csv"
 ]
 st.set_page_config(page_title="Demand Intelligence | CS Intelligence",page_icon="📈",layout="wide")
@@ -43,6 +44,7 @@ def load(name):
 
 summary=load("model_summary.csv")
 policy=load("policy_overall_metrics.csv")
+segments=load("policy_segment_metrics.csv")
 pred=load("final_predictions.csv")
 profile=load("portfolio_profile.csv")
 horizons=load("policy_horizon_metrics.csv")
@@ -56,9 +58,9 @@ seg=float(vals.loc["segmented_policy","wape"])
 reduction=1-float(vals.loc["ses","absolute_error"])/float(vals.loc["naive","absolute_error"])
 
 labels={
-    "naive":T("Referencia: último valor observado","Naive benchmark: last observed value"),
-    "ses":T("Suavizamiento exponencial simple (SES)","Simple exponential smoothing (SES)"),
-    "segmented_policy":T("Selección por segmentos ABC/XYZ","ABC/XYZ segment-based selection")
+    "naive":T("Base","Baseline"),
+    "ses":"SES",
+    "segmented_policy":"ABC/XYZ"
 }
 tiers={
     "High":T("Alta","High"),
@@ -100,10 +102,10 @@ with tabs[0]:
         "Comparamos el error porcentual absoluto ponderado (WAPE). Se calcula sobre las unidades observadas y, cuanto menor sea, mejor es el resultado.",
         "We compare weighted absolute percentage error (WAPE), calculated from observed units. Lower values mean less aggregate error."
     ))
-    a.metric(T("Referencia (WAPE)","Baseline (WAPE)"),f"{naive:.2%}")
-    b.metric(T("Suavizamiento simple (WAPE)","Exponential smoothing (WAPE)"),f"{ses:.2%}")
-    c.metric(T("Por segmentos (WAPE)","Segment-based (WAPE)"),f"{seg:.2%}")
-    d.metric(T("Menor error frente a referencia","Error reduction vs. baseline"),f"{reduction:.1%}")
+    a.metric(T("WAPE base","Baseline WAPE"),f"{naive:.2%}")
+    b.metric("WAPE SES",f"{ses:.2%}")
+    c.metric("WAPE ABC/XYZ",f"{seg:.2%}")
+    d.metric(T("Mejora vs. base","Gain vs. baseline"),f"{reduction:.1%}")
     compare=policy[["strategy","wape"]].copy()
     compare["method"]=compare.strategy.map(labels)
     fig=px.bar(compare,x="method",y="wape",text=compare.wape.map(lambda x:f"{x:.2%}"),
@@ -117,9 +119,14 @@ with tabs[0]:
         "Simple exponential smoothing, applied to each product using the same parameter, had the lowest aggregate error. Choosing models by ABC/XYZ segment did not improve that result, although segmentation still helps organize reviews."
     ))
     st.caption(T(
-        "La evaluación final usa las semanas W44 a W51. Los métodos se seleccionaron con semanas anteriores. WAPE mide errores de cantidad, no pérdidas económicas ni problemas de inventario.",
-        "The final evaluation covers weeks W44 to W51. Methods were selected using earlier weeks. WAPE measures quantity errors, not monetary losses or inventory shortfalls."
+        "Evaluación final: W44 a W51. Se eligieron los métodos con semanas anteriores. WAPE mide error en cantidades, no pérdidas económicas.",
+        "Final evaluation: W44 to W51. Methods were selected on earlier weeks. WAPE measures quantity error, not financial losses."
     ))
+    with st.expander(T("¿Qué significan los métodos?", "What do the methods mean?")):
+        st.write(T(
+            "Base repite la última cantidad semanal observada para cada semana del horizonte. SES significa suavizamiento exponencial simple: actualiza un nivel por producto con alfa de 0.3. ABC/XYZ elige un método por segmento mediante validación histórica. WAPE es la suma de errores absolutos dividida entre la suma de unidades observadas; menor es mejor.",
+            "Baseline repeats the last observed weekly quantity across the forecast horizon. SES means simple exponential smoothing: it updates each product's level with alpha 0.3. ABC/XYZ chooses a model by segment using prior validation. WAPE is total absolute error divided by total observed units; lower is better."
+        ))
 
 with tabs[1]:
     st.subheader(T("Qué cambia con el horizonte","How errors change by horizon"))
@@ -132,12 +139,15 @@ with tabs[1]:
     st.plotly_chart(graph,use_container_width=True)
     view=policy[["strategy","actual_units","absolute_error","wape","bias_pct"]].copy()
     view["strategy"]=view.strategy.map(labels)
+    view["wape"]=(100*view["wape"]).round(2)
+    view["bias_pct"]=(100*view["bias_pct"]).round(2)
+    view["absolute_error"]=view["absolute_error"].round(1)
     st.dataframe(view.rename(columns={
         "strategy":T("Modelo","Model"),
         "actual_units":T("Unidades observadas","Observed units"),
         "absolute_error":T("Error absoluto","Absolute error"),
-        "wape":"WAPE",
-        "bias_pct":T("Sesgo relativo","Relative bias")
+        "wape":"WAPE (%)",
+        "bias_pct":T("Sesgo (%)","Bias (%)")
     }),hide_index=True,use_container_width=True)
     st.caption(T(
         "La validación utilizó orígenes W32, W36 y W40. La prueba final utilizó W44 y W48. Cada predicción solo emplea semanas anteriores al origen.",
@@ -153,8 +163,8 @@ with tabs[2]:
     lines["observed"]=detail.groupby("week_number").actual.first()
     lines=lines.sort_index()
     series=lines.rename(columns={
-        "naive":T("Referencia: último valor","Baseline: last value"),
-        "ses":T("Suavizamiento simple (SES)","Simple smoothing (SES)"),
+        "naive":T("Base","Baseline"),
+        "ses":"SES",
         "observed":T("Observado","Observed")
     })
     st.line_chart(series)
@@ -181,13 +191,56 @@ with tabs[3]:
         "ABC groups products by historical unit-volume concentration. XYZ describes the variation in weekly purchased quantities."
     ))
     st.dataframe(pd.crosstab(profile.abc,profile.xyz).rename_axis("ABC"),use_container_width=True)
+
+    st.subheader(T("Error por segmento ABC/XYZ","Error by ABC/XYZ segment"))
+    st.write(T(
+        "El WAPE agregado puede ocultar dificultades en productos con pocas unidades o compras irregulares. Esta matriz permite comparar segmentos, no estimar su rentabilidad.",
+        "Aggregate WAPE can hide forecasting challenges in low-volume or irregularly purchased products. This matrix compares segments, not their profitability."
+    ))
+    strategy=st.selectbox(
+        T("Método de la matriz","Matrix method"),
+        ["ses","naive","segmented_policy"],
+        format_func=lambda x:labels[x],key="segment_method")
+    segment_view=segments.loc[segments.strategy.eq(strategy)].copy()
+    segment_matrix=(segment_view.pivot(index="abc",columns="xyz",values="wape")
+                    .reindex(index=["A","B","C"],columns=["X","Y","Z"]))
+    cells=[[f"{v:.1%}" if pd.notna(v) else "" for v in row] for row in segment_matrix.to_numpy()]
+    heat=go.Figure(data=go.Heatmap(
+        z=100*segment_matrix.to_numpy(),x=["X","Y","Z"],y=["A","B","C"],
+        text=cells,texttemplate="%{text}",
+        hovertemplate="ABC %{y} / XYZ %{x}<br>WAPE %{z:.1f}%<extra></extra>",
+        colorscale="Blues",colorbar={"title":"WAPE (%)"}))
+    heat.update_layout(height=330,margin={"l":30,"r":15,"t":20,"b":35},
+                       xaxis_title="XYZ",yaxis_title="ABC",yaxis_autorange="reversed")
+    st.plotly_chart(heat,use_container_width=True)
+    segment_view["segment"]=segment_view.abc+segment_view.xyz
+    segment_view["wape_display"]=(100*segment_view.wape).round(2)
+    segment_view["bias_display"]=(100*segment_view.bias_pct).round(2)
+    st.dataframe(segment_view[["segment","actual_units","n","wape_display","bias_display"]]
+        .rename(columns={
+            "segment":T("Segmento","Segment"),
+            "actual_units":T("Unidades observadas","Observed units"),
+            "n":T("Pronósticos evaluados","Evaluated forecasts"),
+            "wape_display":"WAPE (%)",
+            "bias_display":T("Sesgo (%)","Bias (%)")}),
+        hide_index=True,use_container_width=True)
+    st.caption(T(
+        "ABC se basa en unidades, no en ingresos o márgenes. Los segmentos con pocas unidades requieren cautela al interpretar porcentajes altos.",
+        "ABC uses unit volume, not revenue or margins. Interpret high percentage errors cautiously for segments with few observed units."
+    ))
+
     cat=st.multiselect("ABC",["A","B","C"],default=["A","B","C"])
     xyz=st.multiselect("XYZ",["X","Y","Z"],default=["X","Y","Z"])
     shown=profile[profile.abc.isin(cat)&profile.xyz.isin(xyz)].copy()
+    shown["zero_share"]=(100*shown.zero_share).round(1)
+    pattern_es={"smooth":"Estable","erratic":"Errático","intermittent":"Intermitente",
+                "lumpy":"Irregular","all_zero":"Sin compras","unknown":"Sin clasificar"}
+    if lang=="Español":
+        shown["demand_pattern"]=shown["demand_pattern"].map(lambda x:pattern_es.get(x,x))
     st.dataframe(shown[["product","abc","xyz","historical_units","zero_share","demand_pattern"]]
         .rename(columns={"product":T("Producto","Product"),
                          "historical_units":T("Unidades históricas","Historical units"),
-                         "zero_share":T("Proporción de semanas en cero","Share of zero weeks"),
+                         "zero_share":T("Semanas sin compras (%)","Zero weeks (%)"),
                          "demand_pattern":T("Patrón descriptivo","Descriptive pattern")}),
         hide_index=True,use_container_width=True)
     st.caption(T(
@@ -201,8 +254,8 @@ with tabs[4]:
     for col,k in zip([a,b,c],["High","Medium","Routine"]):
         col.metric(tiers[k],int((queue.review_tier==k).sum()))
     st.caption(T(
-        "Prioridades calculadas solo con W0 a W43. No se utilizaron las observaciones posteriores de la prueba final para ordenar esta cola.",
-        "Priorities are based only on W0 to W43. Later holdout outcomes were not used to rank this queue."
+        "Corte histórico: W43. Los pronósticos W44 y W44 a W47 se calculan desde ese corte, no para la semana actual. La cola no utiliza los resultados de la evaluación posterior.",
+        "Historical cutoff: W43. Forecasts for W44 and W44 to W47 start from that cutoff, not the current calendar week. The queue excludes later evaluation outcomes."
     ))
     selected=st.multiselect(T("Nivel de revisión","Review tier"),list(tiers),
                            default=list(tiers),format_func=lambda x:tiers[x])
@@ -214,14 +267,31 @@ with tabs[4]:
     cols=["product","abc","xyz","review_tier","review_score","historical_units",
           "forecast_next_week","forecast_four_week_total","recent_shift_units",
           "review_reason","recommended_review"]
-    st.dataframe(q[cols].rename(columns={
+    displayed=q[cols].rename(columns={
         "product":T("Producto","Product"),"review_tier":T("Nivel","Tier"),
         "review_score":T("Puntuación","Score"),"historical_units":T("Unidades históricas","Historical units"),
-        "forecast_next_week":T("Próxima semana","Next week"),
-        "forecast_four_week_total":T("Próximas 4 semanas","Next 4 weeks"),
+        "forecast_next_week":T("Pronóstico W44","W44 forecast"),
+        "forecast_four_week_total":T("Pronóstico W44 a W47","W44 to W47 forecast"),
         "recent_shift_units":T("Cambio reciente (unidades)","Recent shift (units)"),
         "review_reason":T("Motivos","Reasons"),"recommended_review":T("Revisión sugerida","Suggested review")
-    }),hide_index=True,use_container_width=True)
+    })
+    visible=st.selectbox(T("Mostrar productos","Show products"),[10,20,50,"all"],
+                         index=1,format_func=lambda x:T("Todos","All") if x=="all" else str(x),
+                         key="review_row_count")
+    st.dataframe(displayed if visible=="all" else displayed.head(visible),
+                 hide_index=True,use_container_width=True)
+    st.download_button(
+        T("Descargar lista filtrada (CSV)","Download filtered review list (CSV)"),
+        data=displayed.to_csv(index=False).encode("utf-8-sig"),
+        file_name="demand_review_queue.csv",mime="text/csv")
+    top=q.head(15).iloc[::-1].copy()
+    if not top.empty:
+        chart=px.bar(top,x="review_score",y="product",orientation="h",color="review_tier",
+                     labels={"review_score":T("Puntuación de revisión","Review score"),
+                             "product":T("Producto","Product"),
+                             "review_tier":T("Nivel","Tier")},
+                     title=T("Primeros 15 productos para revisar","First 15 products to review"))
+        st.plotly_chart(chart,use_container_width=True)
     st.info(T(
         "La puntuación es una regla transparente para organizar trabajo humano. No es una probabilidad de desabasto, un riesgo monetario ni una orden de reabastecimiento.",
         "The score is a transparent human-review heuristic. It is not a stockout probability, monetary exposure or replenishment order."
@@ -235,20 +305,21 @@ with tabs[5]:
             "baseline_abs_error","improvement_units","exception_reason"]
     reasons={
         "High volume and high absolute error":T("Alto volumen y error elevado","High volume and high absolute error"),
-        "Selected model worse than naive":T("SES con mayor error que el modelo de referencia","SES error higher than the baseline"),
+        "Selected model worse than naive":T("SES supera el error base","SES error exceeds baseline"),
         "Same-sign bias at both origins":T("Sesgo del mismo signo en ambos orígenes","Same-sign bias at both origins"),
         "High share of zero weeks":T("Muchas semanas sin compras","High share of zero weeks"),
         "Routine monitoring":T("Seguimiento ordinario","Routine monitoring")
     }
     e=e.copy()
     e["exception_reason"]=e.exception_reason.map(lambda x:reasons.get(x,x))
+    e["zero_share"]=(100*e["zero_share"]).round(1)
     st.dataframe(e[fields].head(250).rename(columns={
         "product":T("Producto","Product"),
         "historical_units":T("Unidades históricas","Historical units"),
-        "zero_share":T("Semanas en cero","Zero-week share"),
+        "zero_share":T("Semanas sin compras (%)","Zero weeks (%)"),
         "selected_abs_error":T("Error absoluto SES (unidades)","SES absolute error (units)"),
         "baseline_abs_error":T("Error absoluto de referencia (unidades)","Baseline absolute error (units)"),
-        "improvement_units":T("Mejora en unidades","Improvement in units"),
+        "improvement_units":T("Reducción del error (unidades)","Error reduction (units)"),
         "exception_reason":T("Diagnóstico","Diagnostic")
     }),hide_index=True,use_container_width=True)
     st.caption(T(
