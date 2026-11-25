@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="560" viewBox="0 0 960 560" role="img" aria-labelledby="title desc">
+<title id="title">Demand forecasting model comparison</title>
+<desc id="desc">WAPE comparison for baseline, simple exponential smoothing, and ABC XYZ segmented policy in the W44 to W51 evaluation.</desc>
+<rect width="960" height="560" fill="#ffffff"/>
+<text x="60" y="58" font-family="Arial, sans-serif" font-size="30" font-weight="700" fill="#111111">Demand Intelligence &amp; Forecasting</text>
+<text x="60" y="92" font-family="Arial, sans-serif" font-size="18" fill="#444444">Final evaluation W44-W51 | Evaluación final W44-W51</text>
+<line x1="250" y1="160" x2="250" y2="430" stroke="#bbbbbb" stroke-width="1"/>
+<text x="60" y="205" font-family="Arial, sans-serif" font-size="18" fill="#222222">Baseline / Referencia</text>
+<rect x="250" y="180" width="472" height="42" rx="5" fill="#8a8a8a"/>
+<text x="738" y="208" font-family="Arial, sans-serif" font-size="20" font-weight="700" fill="#111111">33.73%</text>
+<text x="60" y="295" font-family="Arial, sans-serif" font-size="18" fill="#222222">SES</text>
+<rect x="250" y="270" width="384" height="42" rx="5" fill="#4f6b8a"/>
+<text x="650" y="298" font-family="Arial, sans-serif" font-size="20" font-weight="700" fill="#111111">27.45%</text>
+<text x="60" y="385" font-family="Arial, sans-serif" font-size="18" fill="#222222">ABC/XYZ policy / Política</text>
+<rect x="250" y="360" width="387" height="42" rx="5" fill="#6f7f91"/>
+<text x="653" y="388" font-family="Arial, sans-serif" font-size="20" font-weight="700" fill="#111111">27.63%</text>
+<text x="60" y="470" font-family="Arial, sans-serif" font-size="22" font-weight="700" fill="#111111">SES: 18.6% relative error reduction vs baseline</text>
+<text x="60" y="500" font-family="Arial, sans-serif" font-size="18" fill="#444444">811 products | 52 indexed weeks | WAPE lower is better</text>
+<text x="60" y="528" font-family="Arial, sans-serif" font-size="16" fill="#666666">Historical demonstration. No prices, inventory, stockouts or lead times in the source.</text>
+</svg>
