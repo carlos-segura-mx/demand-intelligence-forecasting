@@ -49,4 +49,8 @@ La fuente contiene cantidades compradas observadas, no una medición confirmada 
 
 **Fuente:** Tan, J. (2014), *Sales Transactions Weekly*, UCI Machine Learning Repository, [DOI: 10.24432/C5XS4Q](https://doi.org/10.24432/C5XS4Q), licencia [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
 
+## Derechos
+
+No se ha seleccionado una licencia open-source separada para el código original de este repositorio.
+
 **Carlos Segura**
