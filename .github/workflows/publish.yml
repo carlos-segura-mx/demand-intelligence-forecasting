@@ -11,6 +11,8 @@ on:
       - 'reproduce.py'
       - 'scripts/**'
       - 'requirements.txt'
+      - 'README.md'
+      - 'docs/**'
   workflow_dispatch:
 
 permissions:
