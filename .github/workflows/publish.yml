@@ -1,4 +1,4 @@
-name: Build and verify demand intelligence case
+name: Demand Intelligence & Forecasting QA
 
 on:
   push:
